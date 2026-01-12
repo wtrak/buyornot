@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Buy / No-Buy Decision Tool</title>
+  <style>
+    :root { --bg:#0b0f14; --card:#121a24; --muted:#9fb0c3; --text:#e7eef7; --good:#3ddc97; --warn:#ffd166; --bad:#ff4d6d; --line:#233142; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:var(--bg); color:var(--text); }
+    header { padding: 18px 16px; border-bottom:1px solid var(--line); }
+    header h1 { margin:0; font-size: 18px; letter-spacing: .2px; }
+    header p { margin:6px 0 0; color:var(--muted); font-size: 13px; }
+
+    .wrap { max-width: 980px; margin: 0 auto; padding: 16px; display: grid; gap: 12px; grid-template-columns: 1fr; }
+    @media (min-width: 920px) { .wrap { grid-template-columns: 1.2fr .8fr; } }
+
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+    .card h2 { margin:0 0 10px; font-size: 14px; color: var(--muted); font-weight: 600; letter-spacing:.3px; text-transform: uppercase; }
+    .grid { display:grid; gap:10px; grid-template-columns: 1fr; }
+    @media (min-width: 640px) { .grid { grid-template-columns: 1fr 1fr; } }
+
+    label { display:block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    input[type="text"], input[type="number"] {
+      width:100%; padding: 10px 10px; border-radius: 10px; border: 1px solid var(--line);
+      background:#0e141d; color: var(--text); outline: none;
+    }
+    input[type="number"] { appearance: textfield; }
+    .row { display:flex; gap:10px; }
+    .row > * { flex:1; }
+
+    .checks { display:grid; gap:10px; grid-template-columns: 1fr; }
+    @media (min-width: 640px) { .checks { grid-template-columns: 1fr 1fr; } }
+    .checkgroup { border:1px solid var(--line); border-radius: 10px; padding: 10px; background:#0e141d; }
+    .checkgroup h3 { margin:0 0 8px; font-size: 12px; color: var(--muted); font-weight: 600; }
+    .check { display:flex; gap:8px; align-items:flex-start; margin: 6px 0; font-size: 13px; color: var(--text); }
+    .check input { transform: translateY(2px); }
+    .pill { display:inline-flex; align-items:center; gap:8px; padding: 10px 12px; border-radius: 999px; border:1px solid var(--line); background:#0e141d; }
+    .pill b { font-size: 12px; }
+    .pill span { font-size: 12px; color: var(--muted); }
+
+    .resultBox { display:grid; gap: 10px; }
+    .decision {
+      border-radius: 14px; padding: 14px; border:1px solid var(--line);
+      display:flex; flex-direction: column; gap: 8px;
+    }
+    .decision .title { display:flex; align-items:center; justify-content: space-between; gap:10px; }
+    .decision .title h3 { margin:0; font-size: 14px; }
+    .badge { padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight:700; }
+    .good { background: rgba(61,220,151,.15); border:1px solid rgba(61,220,151,.45); color: var(--good); }
+    .warn { background: rgba(255,209,102,.12); border:1px solid rgba(255,209,102,.45); color: var(--warn); }
+    .bad  { background: rgba(255,77,109,.12); border:1px solid rgba(255,77,109,.45); color: var(--bad); }
+
+    ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; line-height: 1.4; }
+    .metrics { display:grid; gap:10px; grid-template-columns: 1fr; }
+    @media (min-width: 920px) { .metrics { grid-template-columns: 1fr; } }
+    .metric { border:1px solid var(--line); border-radius: 12px; padding: 12px; background:#0e141d; }
+    .metric .k { color: var(--muted); font-size: 12px; }
+    .metric .v { font-size: 18px; font-weight: 800; margin-top: 2px; }
+    .small { font-size: 12px; color: var(--muted); }
+    .actions { display:flex; gap:10px; flex-wrap: wrap; }
+    button {
+      cursor:pointer; padding: 10px 12px; border-radius: 10px; border:1px solid var(--line);
+      background:#0e141d; color:var(--text); font-weight: 700;
+    }
+    button:hover { border-color:#3a5168; }
+    footer { padding: 16px; color: var(--muted); font-size: 12px; text-align:center; }
+    a { color: var(--muted); }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>Buy / No-Buy Decision Tool</h1>
+    <p>Fast rules for auction inventory: margin + multiple + speed + pain + cashflow. Designed for simple, consistent decisions.</p>
+  </header>
+
+  <div class="wrap">
+    <!-- LEFT: INPUTS -->
+    <section class="card">
+      <h2>Inputs</h2>
+
+      <div class="grid">
+        <div>
+          <label>Item / Lot Name (optional)</label>
+          <input id="itemName" type="text" placeholder="e.g., DeWalt bits bundle, watch lot, misc tools" />
+        </div>
+        <div>
+          <label>Source / Supplier (optional)</label>
+          <input id="sourceName" type="text" placeholder="e.g., estate, pallet, flea, thrift, wholesale" />
+        </div>
+
+        <div>
+          <label>All-in Cost ($)</label>
+          <input id="cost" type="number" min="0" step="0.01" value="5" />
+        </div>
+        <div>
+          <label>Conservative Expected Sell Price ($)</label>
+          <input id="sell" type="number" min="0" step="0.01" value="20" />
+        </div>
+
+        <div>
+          <label>Quantity You’re Buying (for cash tied up)</label>
+          <input id="qty" type="number" min="1" step="1" value="1" />
+        </div>
+
+        <div>
+          <label>Sale Method</label>
+          <div class="row">
+            <div class="pill"><input type="radio" name="method" id="mSingle" checked /><b>Single</b><span>sell alone</span></div>
+            <div class="pill"><input type="radio" name="method" id="mBundle" /><b>Bundle</b><span>pack/lot</span></div>
+            <div class="pill"><input type="radio" name="method" id="mLot" /><b>Lot</b><span>part of lot</span></div>
+          </div>
+        </div>
+
+        <div>
+          <label>Your Minimum Margin (%)</label>
+          <input id="minMargin" type="number" min="0" max="100" step="1" value="50" />
+          <div class="small">Default: 50% (40–49% allowed only if “very fast” is checked)</div>
+        </div>
+      </div>
+
+      <div style="height:12px"></div>
+
+      <div class="checks">
+        <div class="checkgroup">
+          <h3>Speed Test</h3>
+          <label class="check"><input id="list7" type="checkbox" checked /> Can list within <b>7 days</b></label>
+          <label class="check"><input id="sell30" type="checkbox" checked /> Will sell within <b>30 days</b></label>
+          <label class="check"><input id="veryFast" type="checkbox" /> This is <b>very fast</b> (allows slightly lower margin)</label>
+        </div>
+
+        <div class="checkgroup">
+          <h3>Trouble Test (check what applies)</h3>
+          <label class="check"><input class="pain" type="checkbox" /> Fragile</label>
+          <label class="check"><input class="pain" type="checkbox" /> Large / bulky</label>
+          <label class="check"><input class="pain" type="checkbox" /> Needs testing</label>
+          <label class="check"><input class="pain" type="checkbox" /> Needs cleaning/repair</label>
+          <label class="check"><input class="pain" type="checkbox" /> Hard to describe</label>
+          <label class="check"><input class="pain" type="checkbox" /> High return risk</label>
+          <label class="check"><input class="pain" type="checkbox" /> Low value but time-consuming</label>
+        </div>
+
+        <div class="checkgroup">
+          <h3>Cashflow Test</h3>
+          <label class="check"><input id="hurtsCash" type="checkbox" /> This would reduce my ability to buy better inventory soon</label>
+        </div>
+
+        <div class="checkgroup">
+          <h3>Strategic Fit (aim for 3+)</h3>
+          <label class="check"><input class="fit" type="checkbox" checked /> High demand</label>
+          <label class="check"><input class="fit" type="checkbox" checked /> Easy photos</label>
+          <label class="check"><input class="fit" type="checkbox" /> Easy ship</label>
+          <label class="check"><input class="fit" type="checkbox" /> Easy to explain</label>
+          <label class="check"><input class="fit" type="checkbox" /> Repeatable category</label>
+        </div>
+      </div>
+
+      <div style="height:12px"></div>
+
+      <div class="actions">
+        <button id="resetBtn" type="button">Reset</button>
+        <button id="exampleBtn" type="button">Load Example</button>
+      </div>
+    </section>
+
+    <!-- RIGHT: OUTPUTS -->
+    <aside class="card">
+      <h2>Decision</h2>
+
+      <div class="resultBox">
+        <div id="decisionBox" class="decision">
+          <div class="title">
+            <h3 id="decisionTitle">—</h3>
+            <span id="decisionBadge" class="badge bad">—</span>
+          </div>
+          <ul id="reasons"></ul>
+        </div>
+
+        <div class="metrics">
+          <div class="metric">
+            <div class="k">Multiple (Sell ÷ Cost)</div>
+            <div class="v" id="multiple">—</div>
+            <div class="small" id="multipleRule">Rule: —</div>
+          </div>
+
+          <div class="metric">
+            <div class="k">Margin ((Sell − Cost) ÷ Sell)</div>
+            <div class="v" id="margin">—</div>
+            <div class="small" id="marginRule">Rule: —</div>
+          </div>
+
+          <div class="metric">
+            <div class="k">Cash Tied Up (Cost × Qty)</div>
+            <div class="v" id="cash">—</div>
+            <div class="small">Use this to keep cash moving & avoid dead inventory.</div>
+          </div>
+
+          <div class="metric">
+            <div class="k">Pain Score</div>
+            <div class="v" id="painScore">—</div>
+            <div class="small">2+ pain boxes = bundle-only unless margins are huge. 3+ = avoid.</div>
+          </div>
+
+          <div class="metric">
+            <div class="k">Fit Score</div>
+            <div class="v" id="fitScore">—</div>
+            <div class="small">Aim for 3+ fit boxes to scale cleanly.</div>
+          </div>
+        </div>
+
+        <div class="small">
+          Notes:
+          <ul>
+            <li>This tool enforces consistency. You can still override decisions, but only with a written reason.</li>
+            <li>It’s built to prefer <b>speed + margin + simplicity</b> so you can scale auctions without clogging operations.</li>
+          </ul>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <footer>
+    Built for GitHub Pages. Single file. No tracking. No backend.
+  </footer>
+
+<script>
+  // ===== Multiple rule table (based on your sheet) =====
+  // Uses cost thresholds and minimum acceptable sell.
+  const multipleRules = [
+    { maxCost: 0.25, minSell: 2 },
+    { maxCost: 1.00, minSell: 5 },
+    { maxCost: 3.00, minSell: 12 },
+    { maxCost: 5.00, minSell: 20 },
+    { maxCost: 10.00, minSell: 35 },
+    { maxCost: 20.00, minSell: 60 }
+  ];
+
+  function fmtMoney(x) {
+    if (!isFinite(x)) return "—";
+    return x.toLocaleString(undefined, { style: "currency", currency: "USD" });
+  }
+  function fmtPct(x) {
+    if (!isFinite(x)) return "—";
+    return (x * 100).toFixed(1) + "%";
+  }
+  function getMinSellForCost(cost) {
+    for (const r of multipleRules) {
+      if (cost <= r.maxCost) return r.minSell;
+    }
+    // For higher cost items, enforce a flexible rule: at least 3x OR min 40% margin,
+    // but user can rely on margin input. We'll still suggest a 3x multiple.
+    return null;
+  }
+
+  // Inputs
+  const el = (id) => document.getElementById(id);
+  const inputs = [
+    "cost","sell","qty","minMargin","list7","sell30","veryFast","hurtsCash",
+    "mSingle","mBundle","mLot"
+  ].map(el);
+
+  const painBoxes = () => [...document.querySelectorAll(".pain")];
+  const fitBoxes  = () => [...document.querySelectorAll(".fit")];
+
+  function compute() {
+    const cost = parseFloat(el("cost").value || "0");
+    const sell = parseFloat(el("sell").value || "0");
+    const qty  = Math.max(1, parseInt(el("qty").value || "1", 10));
+    const minMarginPct = Math.max(0, Math.min(100, parseFloat(el("minMargin").value || "50")));
+    const minMargin = minMarginPct / 100;
+
+    const list7 = el("list7").checked;
+    const sell30 = el("sell30").checked;
+    const veryFast = el("veryFast").checked;
+    const hurtsCash = el("hurtsCash").checked;
+
+    const pain = painBoxes().filter(b => b.checked).length;
+    const fit  = fitBoxes().filter(b => b.checked).length;
+
+    const multiple = (cost > 0) ? (sell / cost) : Infinity;
+    const margin   = (sell > 0) ? ((sell - cost) / sell) : -Infinity;
+    const cashTied = cost * qty;
+
+    // Display metrics
+    el("multiple").textContent = isFinite(multiple) ? multiple.toFixed(2) + "x" : "—";
+    el("margin").textContent = fmtPct(margin);
+    el("cash").textContent = fmtMoney(cashTied);
+    el("painScore").textContent = pain.toString();
+    el("fitScore").textContent = fit.toString();
+
+    // Multiple rule display
+    const minSellRule = getMinSellForCost(cost);
+    if (minSellRule !== null) {
+      el("multipleRule").textContent = `Rule: At cost ${fmtMoney(cost)}, target ≥ ${fmtMoney(minSellRule)} sell.`;
+    } else {
+      el("multipleRule").textContent = "Rule: For higher-cost items, prefer ≥ 3x multiple + strong margin.";
+    }
+
+    // Margin rule display
+    const marginFloor = veryFast ? Math.min(minMargin, 0.40) : minMargin; // allow down to 40% if VERY FAST
+    el("marginRule").textContent = `Rule: ≥ ${(marginFloor*100).toFixed(0)}% margin (very fast can allow down to 40%).`;
+
+    // ===== Decision Logic =====
+    // Outcomes: BUY / BUNDLE ONLY / NO BUY
+    // Hard fails drive to NO BUY. Medium fails drive to BUNDLE ONLY.
+    const reasons = [];
+    let decision = "BUY";
+    let badgeClass = "good";
+
+    // Hard fail: speed
+    if (!list7 || !sell30) {
+      decision = "NO BUY";
+      badgeClass = "bad";
+      reasons.push("Fails SPEED: must list within 7 days and sell within 30 days (otherwise it clogs cash).");
+    }
+
+    // Hard fail: cashflow
+    if (hurtsCash) {
+      decision = "NO BUY";
+      badgeClass = "bad";
+      reasons.push("Fails CASHFLOW: this slows your ability to buy better inventory.");
+    }
+
+    // Multiple rule check
+    if (minSellRule !== null && sell < minSellRule) {
+      if (decision !== "NO BUY") {
+        decision = "BUNDLE ONLY";
+        badgeClass = "warn";
+      }
+      reasons.push(`Fails MULTIPLE rule: at cost ${fmtMoney(cost)}, expected sell should be ≥ ${fmtMoney(minSellRule)}. Bundle or skip.`);
+    } else if (minSellRule === null && isFinite(multiple) && multiple < 3) {
+      if (decision !== "NO BUY") {
+        decision = "BUNDLE ONLY";
+        badgeClass = "warn";
+      }
+      reasons.push("High-cost item with < 3x multiple. Usually bundle or only buy if extremely clean/fast.");
+    }
+
+    // Margin check (with veryFast allowance)
+    if (margin < marginFloor) {
+      if (decision !== "NO BUY") {
+        decision = "NO BUY";
+        badgeClass = "bad";
+      }
+      reasons.push(`Fails MARGIN: ${fmtPct(margin)} < required ${(marginFloor*100).toFixed(0)}%.`);
+    }
+
+    // Pain test
+    if (pain >= 3) {
+      decision = "NO BUY";
+      badgeClass = "bad";
+      reasons.push("Pain score 3+: too much time/return risk. Avoid.");
+    } else if (pain >= 2 && decision !== "NO BUY") {
+      decision = "BUNDLE ONLY";
+      badgeClass = "warn";
+      reasons.push("Pain score 2+: bundle-only unless margins are huge and it’s extremely fast.");
+    }
+
+    // Fit test (not a hard fail, but pushes toward bundle-only)
+    if (fit < 3 && decision === "BUY") {
+      decision = "BUNDLE ONLY";
+      badgeClass = "warn";
+      reasons.push("Fit score < 3: not scale-friendly. Prefer bundling or only buy at extreme discount.");
+    }
+
+    // If no reasons, add positives
+    if (reasons.length === 0) {
+      reasons.push("Passes margin + multiple + speed. Scale-friendly purchase.");
+    }
+
+    // Render decision
+    el("decisionTitle").textContent = (el("itemName").value || "Decision").trim();
+    const badge = el("decisionBadge");
+    badge.className = "badge " + badgeClass;
+    badge.textContent = decision;
+
+    const ul = el("reasons");
+    ul.innerHTML = "";
+    reasons.forEach(r => {
+      const li = document.createElement("li");
+      li.textContent = r;
+      ul.appendChild(li);
+    });
+
+    // Decision box styling
+    const box = el("decisionBox");
+    box.style.borderColor = badgeClass === "good" ? "rgba(61,220,151,.45)"
+                        : badgeClass === "warn" ? "rgba(255,209,102,.45)"
+                        : "rgba(255,77,109,.45)";
+  }
+
+  // Wire up events
+  function wire() {
+    document.querySelectorAll("input").forEach(i => {
+      i.addEventListener("input", compute);
+      i.addEventListener("change", compute);
+    });
+
+    el("resetBtn").addEventListener("click", () => {
+      el("itemName").value = "";
+      el("sourceName").value = "";
+      el("cost").value = 5;
+      el("sell").value = 20;
+      el("qty").value = 1;
+      el("minMargin").value = 50;
+
+      el("list7").checked = true;
+      el("sell30").checked = true;
+      el("veryFast").checked = false;
+      el("hurtsCash").checked = false;
+
+      el("mSingle").checked = true;
+      el("mBundle").checked = false;
+      el("mLot").checked = false;
+
+      painBoxes().forEach(b => b.checked = false);
+      fitBoxes().forEach((b, idx) => b.checked = (idx < 2)); // first two checked
+
+      compute();
+    });
+
+    el("exampleBtn").addEventListener("click", () => {
+      el("itemName").value = "Tool Bundle (bits + sockets)";
+      el("sourceName").value = "Estate / bulk buy";
+      el("cost").value = 3;
+      el("sell").value = 18;
+      el("qty").value = 20;
+      el("minMargin").value = 50;
+
+      el("list7").checked = true;
+      el("sell30").checked = true;
+      el("veryFast").checked = true;
+      el("hurtsCash").checked = false;
+
+      painBoxes().forEach(b => b.checked = false);
+      fitBoxes().forEach(b => b.checked = true);
+
+      compute();
+    });
+
+    compute();
+  }
+
+  wire();
+</script>
+</body>
+</html>
